@@ -55,14 +55,9 @@ jobs:
               ]
             }")
 
-          # Save response to file and parse with Python script
+          # Save response to file and parse with Python script (also updates homepage)
           echo "$RESPONSE" > /tmp/response.json
           python3 .github/scripts/parse_response.py
-
-          # Insert the new card into the homepage
-          CARD=$(cat card.txt)
-          sed -i 's|<li class="empty">.*</li>||g' index.html
-          sed -i "s|</ul>|    $CARD\n  </ul>|" index.html
 
       - name: Commit and push
         run: |
