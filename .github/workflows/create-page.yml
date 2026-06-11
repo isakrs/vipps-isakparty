@@ -1,0 +1,74 @@
+name: Create event page
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Describe the event — what happened, photos, vibe, any data you want visualised"
+        required: true
+        type: string
+      slug:
+        description: "URL slug for the page (e.g. summer-party-2025)"
+        required: true
+        type: string
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate page with Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLUG: ${{ github.event.inputs.slug }}
+          PROMPT: ${{ github.event.inputs.prompt }}
+        run: |
+          mkdir -p "$SLUG"
+
+          SYSTEM_PROMPT=$(cat AGENTS.md)
+
+          USER_PROMPT="Create a new event page for the slug: $SLUG
+
+          $PROMPT
+
+          Return ONLY a JSON object with this exact shape (no markdown, no explanation):
+          {
+            \"index_html\": \"<full HTML content as a single string>\",
+            \"homepage_card\": \"<the <li> HTML snippet to add to the homepage events list>\"
+          }
+
+          The index_html must be a complete, self-contained HTML file following the design guidelines in AGENTS.md."
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "{
+              \"model\": \"claude-opus-4-8\",
+              \"max_tokens\": 8192,
+              \"system\": $(echo "$SYSTEM_PROMPT" | jq -Rs .),
+              \"messages\": [{
+                \"role\": \"user\",
+                \"content\": $(echo "$USER_PROMPT" | jq -Rs .)
+              }]
+            }")
+
+          echo "$RESPONSE" | jq -r '.content[0].text' | jq -r '.index_html' > "$SLUG/index.html"
+
+          CARD=$(echo "$RESPONSE" | jq -r '.content[0].text' | jq -r '.homepage_card')
+
+          # Insert the new card before the closing </ul> tag (removes the "no events" placeholder if present)
+          sed -i 's|<li class="empty">.*</li>||g' index.html
+          sed -i "s|</ul>|    $CARD\n  </ul>|" index.html
+
+      - name: Commit and push
+        run: |
+          git config user.name "isakparty-bot"
+          git config user.email "bot@isakparty.com"
+          git add "${{ github.event.inputs.slug }}/" index.html
+          git commit -m "Add ${{ github.event.inputs.slug }} event page"
+          git push
