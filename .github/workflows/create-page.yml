@@ -55,17 +55,36 @@ jobs:
               ]
             }")
 
-          echo "--- API response ---"
-          echo "$RESPONSE" | jq '{status: .error.code, message: .error.message, has_content: (.choices[0].message.content != null)}'
+          # Save response to file and use Python to robustly parse it
+          echo "$RESPONSE" > /tmp/response.json
 
-          # Strip markdown code fences if the model wrapped the JSON
-          RAW=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed 's/^```json[[:space:]]*//;s/^```[[:space:]]*//' | sed 's/[[:space:]]*```$//')
+          python3 << 'PYEOF'
+import json, re, os
 
-          echo "$RAW" | jq -r '.index_html' > "$SLUG/index.html"
+response = json.load(open("/tmp/response.json"))
+content = response["choices"][0]["message"]["content"]
 
-          CARD=$(echo "$RAW" | jq -r '.homepage_card')
+# Strip markdown code fences
+content = re.sub(r"^```json\s*", "", content.strip())
+content = re.sub(r"^```\s*", "", content.strip())
+content = re.sub(r"\s*```$", "", content.strip())
 
-          # Insert the new card before the closing </ul> tag (removes the "no events" placeholder if present)
+data = json.loads(content)
+
+slug = os.environ["SLUG"]
+os.makedirs(slug, exist_ok=True)
+
+with open(f"{slug}/index.html", "w") as f:
+    f.write(data["index_html"])
+
+with open("card.txt", "w") as f:
+    f.write(data["homepage_card"])
+
+print("Page written successfully")
+PYEOF
+
+          # Insert the new card into the homepage
+          CARD=$(cat card.txt)
           sed -i 's|<li class="empty">.*</li>||g' index.html
           sed -i "s|</ul>|    $CARD\n  </ul>|" index.html
 
