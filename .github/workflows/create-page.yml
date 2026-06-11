@@ -55,33 +55,9 @@ jobs:
               ]
             }")
 
-          # Save response to file and use Python to robustly parse it
+          # Save response to file and parse with Python script
           echo "$RESPONSE" > /tmp/response.json
-
-          python3 << 'PYEOF'
-import json, re, os
-
-response = json.load(open("/tmp/response.json"))
-content = response["choices"][0]["message"]["content"]
-
-# Strip markdown code fences
-content = re.sub(r"^```json\s*", "", content.strip())
-content = re.sub(r"^```\s*", "", content.strip())
-content = re.sub(r"\s*```$", "", content.strip())
-
-data = json.loads(content)
-
-slug = os.environ["SLUG"]
-os.makedirs(slug, exist_ok=True)
-
-with open(f"{slug}/index.html", "w") as f:
-    f.write(data["index_html"])
-
-with open("card.txt", "w") as f:
-    f.write(data["homepage_card"])
-
-print("Page written successfully")
-PYEOF
+          python3 .github/scripts/parse_response.py
 
           # Insert the new card into the homepage
           CARD=$(cat card.txt)
