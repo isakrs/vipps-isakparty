@@ -1,97 +1,484 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Day - June 11, 2026</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="AI Day — June 11, 2026. How we built a one-prompt webpage factory in an afternoon." />
+  <title>AI Day · June 11, 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --text: #e8e8f0;
+      --muted: #666680;
+      --blue: #4f8fff;
+      --purple: #9b5de5;
+      --glow-blue: rgba(79,143,255,0.15);
+      --glow-purple: rgba(155,93,229,0.15);
+      --radius: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
     body {
-      margin: 0;
+      background: var(--bg);
+      color: var(--text);
       font-family: 'Inter', sans-serif;
-      background: #000;
-      color: #fff;
-      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    .hero {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 80px 0 60px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 20px;
+    }
+
+    .hero-title {
+      font-size: clamp(2.8rem, 10vw, 6rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 0.95;
+      margin-bottom: 28px;
+    }
+
+    .grad {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 560px;
+      margin-bottom: 40px;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 8px var(--blue);
+      flex-shrink: 0;
+    }
+    .dot.p { background: var(--purple); box-shadow: 0 0 8px var(--purple); }
+
+    section { margin-bottom: 80px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .section-body {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 1rem;
+      max-width: 640px;
+    }
+
+    .flow { display: grid; gap: 0; margin-top: 36px; }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 16px;
+    }
+
+    .flow-col {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
     }
-    h1 {
-      font-size: 2.5rem;
-      margin: 1rem 0;
+
+    .flow-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      background: var(--surface);
+      flex-shrink: 0;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .flow-step:hover .flow-icon {
+      border-color: var(--blue);
+      box-shadow: 0 0 24px var(--glow-blue);
+    }
+
+    .flow-connector {
+      width: 1px;
+      flex: 1;
+      min-height: 20px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .flow-body { padding: 10px 0 32px; }
+    .flow-name { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+    .flow-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 32px;
+    }
+
+    .stat { background: var(--surface); padding: 28px 16px; text-align: center; }
+
+    .stat-val {
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      cursor: default;
+    }
+
+    .card:hover {
+      border-color: var(--purple);
+      box-shadow: 0 0 28px var(--glow-purple);
+      transform: translateY(-3px);
+    }
+
+    .card-icon { font-size: 22px; margin-bottom: 12px; }
+    .card-name { font-size: 14px; font-weight: 700; margin-bottom: 5px; }
+    .card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    .quote {
+      border-left: 3px solid var(--blue);
+      padding: 16px 0 16px 24px;
+      margin-top: 32px;
+    }
+
+    .quote p {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      font-style: italic;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .quote cite { font-size: 12px; color: var(--muted); font-style: normal; }
+
+    footer {
       text-align: center;
+      padding: 40px 0 20px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
     }
-    .hero {
-      text-align: center;
-      margin-top: 5rem;
-    }
-    .info {
-      max-width: 600px;
-      text-align: center;
-      margin: 2rem auto;
-    }
-    .workflow-diagram {
-      margin: 2rem auto;
-      padding: 1rem;
-      background: rgba(0, 0, 0, 0.8);
-      border: 1px solid #444;
-      border-radius: 0.5rem;
-    }
-    .tech-stack {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 2rem auto;
-      gap: 1rem;
-    }
-    .tech-card {
-      margin: 1rem;
-      padding: 0.5rem 1rem;
-      background: #111;
-      border: 1px solid #444;
-      border-radius: 0.5rem;
-      text-align: center;
-    }
-    a {
-      color: #0ff;
-      text-decoration: none;
-    }
-    #particles-js {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
+
+    footer a { color: var(--blue); text-decoration: none; }
+
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: 1fr; }
+      .stack-grid { grid-template-columns: 1fr 1fr; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 </head>
 <body>
-  <div id="particles-js"></div>
-  <div class="hero">
-    <h1>AI Day</h1>
-    <p>June 11, 2026</p>
-    <p>Dark futuristic design meets cutting-edge AI-powered automation.</p>
-  </div>
-  <div class="info">
-    <p>Welcome to the future of web page creation. On this monumental day, we unveiled <strong>isakparty.com</strong>, an advanced system where a single prompt creates a live webpage in under 90 seconds.</p>
-    <p>Powered by GitHub Actions, GitHub Models GPT-4o, and GitHub Pages with seamless automation.</p>
-  </div>
-  <div class="workflow-diagram">
-    <h2>Workflow Diagram</h2>
-    <p>From prompt → GitHub Actions → GPT-4o → Deployed webpage</p>
-  </div>
-  <div class="tech-stack">
-    <div class="tech-card">GitHub Actions</div>
-    <div class="tech-card">GitHub Pages</div>
-    <div class="tech-card">GitHub Models GPT-4o</div>
-    <div class="tech-card">Three.js</div>
-  </div>
-  <script>
-    particlesJS.load('particles-js', 'https://cdn.jsdelivr.net/particles.js/2.0.0/demo/particles.json', function() {
-      console.log('Particles.js loaded with default config.');
-    });
-  </script>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="page">
+
+  <section class="hero">
+    <p class="eyebrow">Vipps MobilePay &nbsp;·&nbsp; June 11, 2026</p>
+    <h1 class="hero-title">
+      One prompt.<br>
+      <span class="grad">One webpage.</span><br>
+      90 seconds.
+    </h1>
+    <p class="hero-sub">
+      On AI day we built a system that turns any description into a live webpage — from your phone or desktop — deployed to a custom domain before you finish your coffee.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-item"><div class="dot"></div><span>isakparty.com</span></div>
+      <div class="meta-item"><div class="dot p"></div><span>Built in one afternoon</span></div>
+      <div class="meta-item"><div class="dot"></div><span>Fully automated</span></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">The system</p>
+    <h2 class="section-title">From idea to URL<br>in three moves</h2>
+    <p class="section-body">No designer. No developer. No deploy button. Just a description of what you want — and the system figures out the rest.</p>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-col">
+          <div class="flow-icon">📱</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <div class="flow-name">Write a prompt</div>
+          <div class="flow-desc">Describe the event in plain language. Add photos. From the GitHub app on your phone or Claude Code on desktop.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-col">
+          <div class="flow-icon">🤖</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <div class="flow-name">AI generates the page</div>
+          <div class="flow-desc">The AI reads your prompt and the design guidelines, then writes a complete, self-contained HTML page from scratch.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-col">
+          <div class="flow-icon">🚀</div>
+        </div>
+        <div class="flow-body">
+          <div class="flow-name">Live on your domain</div>
+          <div class="flow-desc">The page is committed to GitHub. GitHub Pages deploys automatically. Your URL is live — no clicking, no copy-pasting.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">By the numbers</p>
+    <h2 class="section-title">Built in a single<br>chat session</h2>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val">~90s</div>
+        <div class="stat-label">Prompt to live page</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">0</div>
+        <div class="stat-label">Manual deploys</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">&#8734;</div>
+        <div class="stat-label">Pages possible</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">Tech stack</p>
+    <h2 class="section-title">Five tools.<br>Zero friction.</h2>
+    <p class="section-body">Every piece was chosen for simplicity. No servers to maintain, no databases to manage, no build pipelines to debug.</p>
+    <div class="stack-grid">
+      <div class="card">
+        <div class="card-icon">&#128196;</div>
+        <div class="card-name">GitHub Pages</div>
+        <div class="card-desc">Static hosting. Deploys on every push to main. Free, fast, zero config.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#9729;&#65039;</div>
+        <div class="card-name">Cloudflare DNS</div>
+        <div class="card-desc">DNS with a real API. Seconds to propagate. Configured entirely from the terminal.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#9881;&#65039;</div>
+        <div class="card-name">GitHub Actions</div>
+        <div class="card-desc">The pipeline. Triggered by workflow_dispatch — works from the GitHub mobile app.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#129504;</div>
+        <div class="card-name">GitHub Models</div>
+        <div class="card-desc">GPT-4o for page generation. Free with a GitHub account. No separate API billing.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#129302;</div>
+        <div class="card-name">Claude Code</div>
+        <div class="card-desc">For desktop creation and revisions. Reads the repo, generates files, pushes directly.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#128203;</div>
+        <div class="card-name">AGENTS.md</div>
+        <div class="card-desc">Agent-agnostic instructions. Any AI can read this and create a page correctly.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">The insight</p>
+    <h2 class="section-title">The docs are<br>the product</h2>
+    <p class="section-body">It is not a website builder. It is not a CMS. AGENTS.md tells any AI exactly how to create a page — so any capable model becomes your deployment tool. Swap Claude for Gemini or GPT in one line.</p>
+    <div class="quote">
+      <p>"The whole setup was built in a single afternoon chat session. The next page took 90 seconds."</p>
+      <cite>AI Day, June 11, 2026</cite>
+    </div>
+  </section>
+
+  <footer>
+    <p>vipps.isakparty.com &nbsp;·&nbsp; <a href="https://github.com/isakrs/vipps-isakparty">github.com/isakrs/vipps-isakparty</a></p>
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 5;
+
+  const count = 1400;
+  const pos = new Float32Array(count * 3);
+  const col = new Float32Array(count * 3);
+  const blue = new THREE.Color('#4f8fff');
+  const purple = new THREE.Color('#9b5de5');
+
+  for (let i = 0; i < count; i++) {
+    pos[i*3]   = (Math.random() - 0.5) * 22;
+    pos[i*3+1] = (Math.random() - 0.5) * 22;
+    pos[i*3+2] = (Math.random() - 0.5) * 22;
+    const c = Math.random() > 0.5 ? blue : purple;
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.032,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.55,
+    sizeAttenuation: true
+  });
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+
+  const sGeo = new THREE.IcosahedronGeometry(2.6, 2);
+  const sMat = new THREE.MeshBasicMaterial({
+    color: '#4f8fff',
+    wireframe: true,
+    transparent: true,
+    opacity: 0.035
+  });
+  const sphere = new THREE.Mesh(sGeo, sMat);
+  scene.add(sphere);
+
+  let mx = 0, my = 0, sy = 0;
+  window.addEventListener('mousemove', function(e) {
+    mx = (e.clientX / innerWidth - 0.5) * 0.5;
+    my = (e.clientY / innerHeight - 0.5) * 0.5;
+  });
+  window.addEventListener('scroll', function() { sy = window.scrollY; });
+  window.addEventListener('resize', function() {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    const t = Date.now() * 0.0003;
+    points.rotation.y = t * 0.12 + mx * 0.3;
+    points.rotation.x = t * 0.07 - my * 0.3 + sy * 0.0002;
+    sphere.rotation.y = t * 0.18;
+    sphere.rotation.x = t * 0.09;
+    renderer.render(scene, camera);
+  })();
+})();
+</script>
+
 </body>
 </html>
