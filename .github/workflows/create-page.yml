@@ -23,7 +23,7 @@ jobs:
 
       - name: Generate page with GitHub Models
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
           SLUG: ${{ github.event.inputs.slug }}
           PROMPT: ${{ github.event.inputs.prompt }}
         run: |
@@ -44,7 +44,7 @@ jobs:
           The index_html must be a complete, self-contained HTML file following the design guidelines in AGENTS.md."
 
           RESPONSE=$(curl -s https://models.inference.ai.azure.com/chat/completions \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Authorization: Bearer $MODELS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{
               \"model\": \"gpt-4o\",
@@ -55,8 +55,11 @@ jobs:
               ]
             }")
 
+          echo "--- API response ---"
+          echo "$RESPONSE" | jq '{status: .error.code, message: .error.message, has_content: (.choices[0].message.content != null)}'
+
           # Strip markdown code fences if the model wrapped the JSON
-          RAW=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed 's/^```json//;s/^```//' | sed 's/```$//')
+          RAW=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed 's/^```json[[:space:]]*//;s/^```[[:space:]]*//' | sed 's/[[:space:]]*```$//')
 
           echo "$RAW" | jq -r '.index_html' > "$SLUG/index.html"
 
