@@ -44,6 +44,7 @@ Reference page: https://vipps.janschill.de/ (source: https://github.com/janschil
 - One or two accent colors that fit the event; no more
 - If photos are provided: responsive grid or masonry layout
 - If data is provided (times, scores, results): visualise it — table or animated chart
+- **Favicon required** — every page's `<head>` must include `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />` (the orange Vipps V SVG lives at the repo root)
 - Vanilla JavaScript only — no frameworks, no bundlers
 - No external dependencies beyond Google Fonts
 - All CSS and JS inline or in files in the same folder
