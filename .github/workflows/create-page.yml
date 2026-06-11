@@ -21,9 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate page with Claude
+      - name: Generate page with GitHub Models
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLUG: ${{ github.event.inputs.slug }}
           PROMPT: ${{ github.event.inputs.prompt }}
         run: |
@@ -43,23 +43,21 @@ jobs:
 
           The index_html must be a complete, self-contained HTML file following the design guidelines in AGENTS.md."
 
-          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: $ANTHROPIC_API_KEY" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
+          RESPONSE=$(curl -s https://models.inference.ai.azure.com/chat/completions \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
             -d "{
-              \"model\": \"claude-opus-4-8\",
+              \"model\": \"gpt-4o\",
               \"max_tokens\": 8192,
-              \"system\": $(echo "$SYSTEM_PROMPT" | jq -Rs .),
-              \"messages\": [{
-                \"role\": \"user\",
-                \"content\": $(echo "$USER_PROMPT" | jq -Rs .)
-              }]
+              \"messages\": [
+                {\"role\": \"system\", \"content\": $(echo "$SYSTEM_PROMPT" | jq -Rs .)},
+                {\"role\": \"user\", \"content\": $(echo "$USER_PROMPT" | jq -Rs .)}
+              ]
             }")
 
-          echo "$RESPONSE" | jq -r '.content[0].text' | jq -r '.index_html' > "$SLUG/index.html"
+          echo "$RESPONSE" | jq -r '.choices[0].message.content' | jq -r '.index_html' > "$SLUG/index.html"
 
-          CARD=$(echo "$RESPONSE" | jq -r '.content[0].text' | jq -r '.homepage_card')
+          CARD=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | jq -r '.homepage_card')
 
           # Insert the new card before the closing </ul> tag (removes the "no events" placeholder if present)
           sed -i 's|<li class="empty">.*</li>||g' index.html
