@@ -55,9 +55,12 @@ jobs:
               ]
             }")
 
-          echo "$RESPONSE" | jq -r '.choices[0].message.content' | jq -r '.index_html' > "$SLUG/index.html"
+          # Strip markdown code fences if the model wrapped the JSON
+          RAW=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed 's/^```json//;s/^```//' | sed 's/```$//')
 
-          CARD=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | jq -r '.homepage_card')
+          echo "$RAW" | jq -r '.index_html' > "$SLUG/index.html"
+
+          CARD=$(echo "$RAW" | jq -r '.homepage_card')
 
           # Insert the new card before the closing </ul> tag (removes the "no events" placeholder if present)
           sed -i 's|<li class="empty">.*</li>||g' index.html
